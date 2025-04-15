@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
-	<!--https://schneegans.de/windows/unattend-generator/?LanguageMode=Unattended&UILanguage=pt-BR&Locale=pt-BR&Keyboard=00000416&UseKeyboard2=true&Locale2=en-US&Keyboard2=00000409&GeoLocation=32&ProcessorArchitecture=amd64&BypassRequirementsCheck=true&BypassNetworkCheck=true&ComputerNameMode=Custom&ComputerName=ERIK-PC&CompactOsMode=Default&TimeZoneMode=Implicit&PartitionMode=Interactive&DiskAssertionMode=Skip&WindowsEditionMode=Generic&WindowsEdition=pro&UserAccountMode=Unattended&AccountName0=Erik+Gabriel&AccountDisplayName0=Erik+Gabriel&AccountPassword0=221103&AccountGroup0=Administrators&AccountName1=&AccountName2=&AccountName3=&AccountName4=&AutoLogonMode=Own&ObscurePasswords=true&PasswordExpirationMode=Unlimited&LockoutMode=Default&HideFiles=Hidden&TaskbarSearch=Hide&TaskbarIconsMode=Default&StartTilesMode=Default&StartPinsMode=Empty&EffectsMode=Default&DesktopIconsMode=Default&WifiMode=Interactive&ExpressSettings=DisableAll&KeysMode=Skip&ColorMode=Default&WallpaperMode=Default&Remove3DViewer=true&RemoveBingSearch=true&RemoveFeedbackHub=true&RemoveGetHelp=true&RemoveMaps=true&RemoveMathInputPanel=true&RemoveMixedReality=true&RemoveOneDrive=true&RemoveOutlook=true&RemovePaint=true&RemovePeople=true&RemoveSkype=true&RemoveSolitaire=true&RemoveTeams=true&RemoveGetStarted=true&RemoveWallet=true&RemoveWindowsHello=true&RemoveWindowsMediaPlayer=true&RemoveWordPad=true&WdacMode=Skip-->
+	<!--https://schneegans.de/windows/unattend-generator/?LanguageMode=Unattended&UILanguage=pt-BR&Locale=pt-BR&Keyboard=00000416&UseKeyboard2=true&Locale2=en-US&Keyboard2=00000409&GeoLocation=32&ProcessorArchitecture=amd64&BypassRequirementsCheck=true&BypassNetworkCheck=true&ComputerNameMode=Custom&ComputerName=ERIK-PC&CompactOsMode=Default&TimeZoneMode=Implicit&PartitionMode=Interactive&DiskAssertionMode=Skip&WindowsEditionMode=Generic&WindowsEdition=pro&UserAccountMode=Unattended&AccountName0=Erik+Gabriel&AccountDisplayName0=Erik+Gabriel&AccountPassword0=221103&AccountGroup0=Administrators&AccountName1=&AccountName2=&AccountName3=&AutoLogonMode=Own&ObscurePasswords=true&PasswordExpirationMode=Unlimited&LockoutMode=Default&HideFiles=Hidden&TaskbarSearch=Hide&TaskbarIconsMode=Default&StartTilesMode=Default&StartPinsMode=Empty&EffectsMode=Default&DesktopIconsMode=Default&WifiMode=Interactive&ExpressSettings=DisableAll&KeysMode=Skip&ColorMode=Default&WallpaperMode=Default&Remove3DViewer=true&RemoveBingSearch=true&RemoveFamily=true&RemoveFeedbackHub=true&RemoveGetHelp=true&RemoveMaps=true&RemoveMathInputPanel=true&RemoveMixedReality=true&RemoveNews=true&RemoveOneDrive=true&RemoveOneNote=true&RemoveOutlook=true&RemovePaint=true&RemovePeople=true&RemoveSkype=true&RemoveSnippingTool=true&RemoveSolitaire=true&RemoveTeams=true&RemoveGetStarted=true&RemoveWallet=true&RemoveWindowsHello=true&RemoveWindowsMediaPlayer=true&RemoveWordPad=true&WdacMode=Skip-->
 	<settings pass="offlineServicing"></settings>
 	<settings pass="windowsPE">
 		<component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
@@ -135,15 +135,19 @@ foreach( $file in $Document.unattend.Extensions.File ) {
 $selectors = @(
 	'Microsoft.Microsoft3DViewer';
 	'Microsoft.BingSearch';
+	'MicrosoftCorporationII.MicrosoftFamily';
 	'Microsoft.WindowsFeedbackHub';
 	'Microsoft.GetHelp';
 	'Microsoft.Getstarted';
 	'Microsoft.WindowsMaps';
 	'Microsoft.MixedReality.Portal';
+	'Microsoft.BingNews';
+	'Microsoft.Office.OneNote';
 	'Microsoft.OutlookForWindows';
 	'Microsoft.Paint';
 	'Microsoft.People';
 	'Microsoft.SkypeApp';
+	'Microsoft.ScreenSketch';
 	'Microsoft.MicrosoftSolitaireCollection';
 	'MicrosoftTeams';
 	'MSTeams';
@@ -193,6 +197,7 @@ $logfile = 'C:\Windows\Setup\Scripts\RemovePackages.log';
 $selectors = @(
 	'MathRecognizer';
 	'Microsoft.Windows.MSPaint';
+	'Microsoft.Windows.SnippingTool';
 	'Hello.Face.18967';
 	'Hello.Face.Migration.18967';
 	'Hello.Face.20134';
@@ -220,6 +225,53 @@ $removeCommand = {
 };
 $type = 'Capability';
 $logfile = 'C:\Windows\Setup\Scripts\RemoveCapabilities.log';
+&amp; {
+	$installed = &amp; $getCommand;
+	foreach( $selector in $selectors ) {
+		$result = [ordered] @{
+			Selector = $selector;
+		};
+		$found = $installed | Where-Object -FilterScript $filterCommand;
+		if( $found ) {
+			$result.Output = $found | &amp; $removeCommand;
+			if( $? ) {
+				$result.Message = "$type removed.";
+			} else {
+				$result.Message = "$type not removed.";
+				$result.Error = $Error[0];
+			}
+		} else {
+			$result.Message = "$type not installed.";
+		}
+		$result | ConvertTo-Json -Depth 3 -Compress;
+	}
+} *&gt;&amp;1 &gt;&gt; $logfile;
+		</File>
+		<File path="C:\Windows\Setup\Scripts\RemoveFeatures.ps1">
+$selectors = @(
+	'Microsoft-SnippingTool';
+);
+$getCommand = {
+  Get-WindowsOptionalFeature -Online | Where-Object -Property 'State' -NotIn -Value @(
+    'Disabled';
+    'DisabledWithPayloadRemoved';
+  );
+};
+$filterCommand = {
+  $_.FeatureName -eq $selector;
+};
+$removeCommand = {
+  [CmdletBinding()]
+  param(
+    [Parameter( Mandatory, ValueFromPipeline )]
+    $InputObject
+  );
+  process {
+    $InputObject | Disable-WindowsOptionalFeature -Online -Remove -NoRestart -ErrorAction 'Continue';
+  }
+};
+$type = 'Feature';
+$logfile = 'C:\Windows\Setup\Scripts\RemoveFeatures.log';
 &amp; {
 	$installed = &amp; $getCommand;
 	foreach( $selector in $selectors ) {
@@ -273,6 +325,9 @@ $scripts = @(
 	};
 	{
 		Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\RemoveCapabilities.ps1' -Raw | Invoke-Expression;
+	};
+	{
+		Get-Content -LiteralPath 'C:\Windows\Setup\Scripts\RemoveFeatures.ps1' -Raw | Invoke-Expression;
 	};
 	{
 		net.exe accounts /maxpwage:UNLIMITED;
